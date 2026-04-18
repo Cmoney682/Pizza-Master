@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pizza Slice Master 🍕</title>
+
+<style>
+body {
+    margin: 0;
+    background: radial-gradient(circle at top, #2b2b3c, #12121a);
+    font-family: system-ui;
+    color: white;
+    text-align: center;
+}
+
+#gameWrap {
+    position: relative;
+    width: 90vw;
+    max-width: 420px;
+    margin: auto;
+}
+
+canvas {
+    width: 100%;
+    border-radius: 50%;
+}
+
+#gameOver {
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: rgba(0,0,0,0.7);
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #ff7043;
+    color: white;
+}
+
+</style>
+</head>
+<body>
+
+<h1>🍕 Pizza Slice Master</h1>
+
+<div id="gameWrap">
+    <canvas id="game" width="400" height="400"></canvas>
+
+    <div id="gameOver">
+        <h2>Game Over</h2>
+        <p id="finalScore"></p>
+        <button onclick="restart()">Restart</button>
+    </div>
+</div>
+
+<div>
+Score: <span id="score">0</span> |
+High Score: <span id="high">0</span>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let cx=200, cy=200, r=180;
+
+let slices=[];
+let effects=[];
+let offset=0;
+
+let speed=0.01;
+let score=0;
+let playing=true;
+
+let highScore = localStorage.getItem("pizzaHigh") || 0;
+document.getElementById("high").textContent = highScore;
+
+function beep(){
+    let ctxAudio = new (window.AudioContext||window.webkitAudioContext)();
+    let osc = ctxAudio.createOscillator();
+    osc.connect(ctxAudio.destination);
+    osc.start();
+    osc.stop(ctxAudio.currentTime + 0.05);
+}
+
+function drawPizza(){
+    ctx.clearRect(0,0,400,400);
+
+    // random cheese shade
+    ctx.fillStyle = ["#ffd54f","#ffca28","#ffe082"][score%3];
+
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle="#5d4037";
+    ctx.lineWidth=3;
+
+    slices.forEach(a=>{
+        let ang=a+offset;
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+Math.cos(ang)*r, cy+Math.sin(ang)*r);
+        ctx.stroke();
+    });
+
+    // slice effects
+    effects.forEach(e=>{
+        ctx.beginPath();
+        ctx.arc(e.x,e.y,e.size,0,Math.PI*2);
+        ctx.fillStyle="white";
+        ctx.fill();
+        e.size+=1;
+    });
+}
+
+function loop(){
+    if(!playing) return;
+    offset+=speed;
+    drawPizza();
+    requestAnimationFrame(loop);
+}
+
+function norm(a){
+    return (a+Math.PI*2)%(Math.PI*2);
+}
+
+function tap(){
+    if(!playing) return;
+
+    let a=norm(-offset);
+
+    for(let s of slices){
+        if(Math.abs(norm(s-a))<0.22){
+            gameOver();
+            return;
+        }
+    }
+
+    slices.push(a);
+    score++;
+    beep();
+
+    effects.push({x:200,y:200,size:3});
+
+    document.getElementById("score").textContent=score;
+
+    if(score%5===0){
+        speed+=0.003;
+        slices=[];
+    }
+}
+
+canvas.addEventListener("click",tap);
+canvas.addEventListener("touchstart",tap);
+
+function gameOver(){
+    playing=false;
+
+    if(score>highScore){
+        highScore=score;
+        localStorage.setItem("pizzaHigh",highScore);
+    }
+
+    document.getElementById("high").textContent=highScore;
+    document.getElementById("finalScore").textContent="Score: "+score;
+
+    document.getElementById("gameOver").style.display="flex";
+}
+
+function restart(){
+    slices=[];
+    effects=[];
+    offset=0;
+    speed=0.01;
+    score=0;
+    playing=true;
+
+    document.getElementById("score").textContent=0;
+    document.getElementById("gameOver").style.display="none";
+
+    loop();
+}
+
+loop();
+</script>
+
+</body>
+</html>
